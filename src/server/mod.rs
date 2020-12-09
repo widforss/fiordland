@@ -1,15 +1,18 @@
 use crate::command::Command;
 use crate::{DEFAULT_CONN, DEFAULT_SECRET};
+use futures::{stream::SplitSink, FutureExt, SinkExt, StreamExt};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
-use tokio_postgres::{NoTls, row::Row};
 use tokio::sync::mpsc;
-use warp::{Filter, ws::{Message, WebSocket}};
-use futures::{FutureExt, StreamExt, SinkExt, stream::SplitSink};
 use tokio::sync::Mutex;
-use serde_json::{json, Value};
+use tokio_postgres::{row::Row, NoTls};
 use uuid::Uuid;
+use warp::{
+    ws::{Message, WebSocket},
+    Filter,
+};
 
 pub async fn serve() {
     let conn_string = match env::args().nth(1) {
@@ -40,9 +43,12 @@ pub async fn serve() {
     let sockets_in = Arc::new(Mutex::new(sockets));
     let sockets_out = Arc::clone(&sockets_in);
     let ws_db = Arc::clone(&db);
-    tokio::spawn( async move {
+    tokio::spawn(async move {
         while let Some((phone, mut ws)) = ws_rx.recv().await {
-            match ws_db.query("SELECT * FROM public.hike($1)", &[&phone]).await {
+            match ws_db
+                .query("SELECT * FROM public.hike($1)", &[&phone])
+                .await
+            {
                 Ok(rows) if rows.len() > 0 => {
                     let json = convert_rows(rows);
                     let _ = ws.send(Message::text(json)).await;
@@ -52,7 +58,7 @@ pub async fn serve() {
                         Some(wss) => wss.push(ws),
                         None => {
                             (*sockets).insert(phone, vec![ws]);
-                        },
+                        }
                     }
                 }
                 _ => {
@@ -61,7 +67,7 @@ pub async fn serve() {
             }
         }
     });
-    tokio::spawn( async move {
+    tokio::spawn(async move {
         while let Some((phone, json)) = db_rx.recv().await {
             let mut sockets = sockets_out.lock().await;
             if let Some(wss) = (*sockets).get_mut(&phone) {
@@ -71,7 +77,7 @@ pub async fn serve() {
                     if let Err(_) = ws.send(Message::text(json.clone())).await {
                         remove.push(i);
                     }
-                };
+                }
                 while let Some(i) = remove.pop() {
                     let _ = wss.remove(i);
                 }
@@ -83,8 +89,7 @@ pub async fn serve() {
         .and(warp::path::end())
         .and(warp::fs::file("www/static/html/index.html"));
 
-    let static_content = warp::path("static")
-        .and(warp::fs::dir("www/static"));
+    let static_content = warp::path("static").and(warp::fs::dir("www/static"));
 
     // We always need to return 200, due to 46Elks error handling.
     let sms = warp::post()
@@ -144,25 +149,22 @@ pub async fn serve() {
         .and(warp::ws())
         .map(move |ws: warp::ws::Ws| {
             let ws_tx = ws_tx.clone();
-            ws.on_upgrade(move |ws| {
-                ws_connect(ws, ws_tx.clone())
-            })
+            ws.on_upgrade(move |ws| ws_connect(ws, ws_tx.clone()))
         });
 
     let map = warp::get()
         .and(warp::path("map"))
         .and(warp::fs::file("www/static/html/map.html"));
 
-    let routes = root
-        .or(static_content)
-        .or(sms)
-        .or(ws)
-        .or(map);
+    let routes = root.or(static_content).or(sms).or(ws).or(map);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
 
-async fn ws_connect(ws: WebSocket, mut ws_tx: mpsc::Sender<(String, SplitSink<WebSocket, Message>)>) {
+async fn ws_connect(
+    ws: WebSocket,
+    mut ws_tx: mpsc::Sender<(String, SplitSink<WebSocket, Message>)>,
+) {
     let (tx, mut rx) = ws.split();
     let phone = rx.next().map(move |phone| phone).await;
     if let Some(Ok(phone)) = phone {
@@ -172,13 +174,14 @@ async fn ws_connect(ws: WebSocket, mut ws_tx: mpsc::Sender<(String, SplitSink<We
     }
 }
 
-fn convert_rows(rows: Vec<Row>, ) -> String {
-    let _id: Uuid =rows[0].get(0);
+fn convert_rows(rows: Vec<Row>) -> String {
+    let _id: Uuid = rows[0].get(0);
     let routes: Option<Value> = rows[0].get(2);
     let traces: Option<Value> = rows[0].get(3);
     json!({
         "_id": _id,
         "routes": routes,
         "traces": traces,
-    }).to_string()
+    })
+    .to_string()
 }
