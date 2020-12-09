@@ -58,12 +58,12 @@ pub async fn serve() {
                 Create(_) => "SELECT * FROM public.create_hike($1, $2)",
                 Edit(_) => "SELECT * FROM public.edit_route($1, $2)",
                 Checkin(_) => "SELECT * FROM public.edit_route($1, $2)",
-                Complete => "SELECT * FROM public.complete_hike()",
+                Complete => "SELECT * FROM public.complete_hike($1)",
             };
             let db = db.clone();
             tokio::spawn(async move {
                 let _ = if let Complete = command {
-                    db.query(query, &[]).await
+                    db.query(query, &[&from]).await
                 } else {
                     db.query(query, &[&from, &json]).await
                 };
