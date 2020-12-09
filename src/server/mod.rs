@@ -3,8 +3,13 @@ use crate::{DEFAULT_CONN, DEFAULT_SECRET};
 use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
-use tokio_postgres::NoTls;
-use warp::Filter;
+use tokio_postgres::{NoTls, row::Row};
+use tokio::sync::mpsc;
+use warp::{Filter, ws::{Message, WebSocket}};
+use futures::{FutureExt, StreamExt, SinkExt, stream::SplitSink};
+use tokio::sync::Mutex;
+use serde_json::{json, Value};
+use uuid::Uuid;
 
 pub async fn serve() {
     let conn_string = match env::args().nth(1) {
@@ -21,13 +26,60 @@ pub async fn serve() {
         Ok((db, connection)) => {
             tokio::spawn(async move {
                 if let Err(e) = connection.await {
-                    eprintln!("connection error: {}", e);
+                    eprintln!("Database connection error: {}", e);
                 }
             });
             Arc::new(db)
         }
         Err(_) => panic!("Could not connect to database."),
     };
+
+    let (ws_tx, mut ws_rx) = mpsc::channel::<(String, SplitSink<WebSocket, Message>)>(32);
+    let (db_tx, mut db_rx) = mpsc::channel::<(String, String)>(32);
+    let sockets: HashMap<String, Vec<SplitSink<WebSocket, Message>>> = HashMap::new();
+    let sockets_in = Arc::new(Mutex::new(sockets));
+    let sockets_out = Arc::clone(&sockets_in);
+    let ws_db = Arc::clone(&db);
+    tokio::spawn( async move {
+        while let Some((phone, mut ws)) = ws_rx.recv().await {
+            if let Ok(rows) = ws_db.query("SELECT * FROM public.hike($1)", &[&phone]).await {
+                let json = convert_rows(rows);
+                let _ =ws.send(Message::text(json)).await;
+            };
+
+            let mut sockets = sockets_in.lock().await;
+            match (*sockets).get_mut(&phone) {
+                Some(wss) => wss.push(ws),
+                None => {
+                    (*sockets).insert(phone, vec![ws]);
+                },
+            }
+        }
+    });
+    tokio::spawn( async move {
+        while let Some((phone, json)) = db_rx.recv().await {
+            let mut sockets = sockets_out.lock().await;
+            if let Some(wss) = (*sockets).get_mut(&phone) {
+                let mut remove = vec![];
+                for i in 0..wss.len() {
+                    let ws = &mut wss[i];
+                    if let Err(_) = ws.send(Message::text(json.clone())).await {
+                        remove.push(i);
+                    }
+                };
+                while let Some(i) = remove.pop() {
+                    let _ = wss.remove(i);
+                }
+            }
+        }
+    });
+
+    let root = warp::get()
+        .and(warp::path::end())
+        .and(warp::fs::file("www/static/html/index.html"));
+
+    let static_content = warp::path("static")
+        .and(warp::fs::dir("www/static"));
 
     // We always need to return 200, due to 46Elks error handling.
     let sms = warp::post()
@@ -61,15 +113,63 @@ pub async fn serve() {
                 Complete => "SELECT * FROM public.complete_hike($1)",
             };
             let db = db.clone();
+            let mut db_tx = db_tx.clone();
             tokio::spawn(async move {
-                let _ = if let Complete = command {
-                    db.query(query, &[&from]).await
-                } else {
-                    db.query(query, &[&from, &json]).await
+                let rows = match command {
+                    Complete => {
+                        db.query(query, &[&from]).await.unwrap();
+                        return;
+                    }
+                    _ => db.query(query, &[&from, &json]).await
                 };
+                if let Ok(rows) = rows {
+                    let json = convert_rows(rows);
+                    db_tx.send((from, json)).await.unwrap();
+                }
+
             });
             "".to_string()
         });
 
-    warp::serve(sms).run(([127, 0, 0, 1], 3030)).await;
+    let ws = warp::path("listen")
+        .and(warp::ws())
+        .map(move |ws: warp::ws::Ws| {
+            let ws_tx = ws_tx.clone();
+            ws.on_upgrade(move |ws| {
+                ws_connect(ws, ws_tx.clone())
+            })
+        });
+
+    let map = warp::get()
+        .and(warp::path("map"))
+        .and(warp::fs::file("www/static/html/map.html"));
+
+    let routes = root
+        .or(static_content)
+        .or(sms)
+        .or(ws)
+        .or(map);
+
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+}
+
+async fn ws_connect(ws: WebSocket, mut ws_tx: mpsc::Sender<(String, SplitSink<WebSocket, Message>)>) {
+    let (tx, mut rx) = ws.split();
+    let phone = rx.next().map(move |phone| phone).await;
+    if let Some(Ok(phone)) = phone {
+        if let Ok(phone) = phone.to_str() {
+            ws_tx.send((phone.to_string(), tx)).await.unwrap();
+        }
+    }
+}
+
+fn convert_rows(rows: Vec<Row>, ) -> String {
+    let _id: Uuid =rows[0].get(0);
+    let routes: Option<Value> = rows[0].get(2);
+    let traces: Option<Value> = rows[0].get(3);
+    json!({
+        "_id": _id,
+        "routes": routes,
+        "traces": traces,
+    }).to_string()
 }

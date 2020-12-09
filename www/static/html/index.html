@@ -1,0 +1,208 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+
+    <title>Fiordland</title>
+    <meta name="description" content="Hike tracker with SMS interface.">
+    <meta name="author" content="Aron Widforss">
+
+    <style type="text/css">
+        body{
+            background-color: #eee;
+            margin:40px auto;
+            max-width:650px;
+            line-height:1.6;
+            font-size:18px;
+            color:#444;
+            padding:0 10px
+        }
+
+        h1,h2,h3{
+            line-height:1.2
+        }
+
+        h1 {
+            text-align: center;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/css/ribbon.css" />
+    <link rel="shortcut icon" type="image/jpg" href="/static/img/favicon.jpg" />
+</head>
+
+<body>
+    <h1>Fiordland</h1>
+    <a href="https://en.wikipedia.org/wiki/Fiordland_penguin">
+        <img width="650px" src="/static/img/fiordland.jpg" alt="Fiordland penguin">
+    </a>
+    <h2>“Planlegg turen og meld fra hvor du går”</h2>
+    <p>
+        By sending text messages to <a href="tel:+46766868885">+46 76 686 8885</a>
+        you can publish an itinerary for your upcoming hike. Start by creating
+        your map:
+    </p>
+    <p>
+        <code>create</code>
+    </p>
+    <p>
+        After you have sent this from your phone you can access your map at
+        <code>https://fiordland.antarkt.is/map?map=46701740675</code>, if your phone
+        number is <code>+46 70 174 0675</code>, that is.
+    </p>
+    <p>
+        Now you can specify your planned path. For each stop along the way you
+        <b>have</b> to specify:
+        <ul>
+            <li>
+                a planned location in UTM, which you can specify in multiple ways
+                (all of the examples are around the same area):
+                <ul>
+                    <li><code>33 7531609 668818</code></li>
+                    <li><code>416476 7527469 UTM34</code></li>
+                    <li><code>utm33 N7531 668818.35423</code></li>
+                    <li><code>e416476 34 7527469</code></li>
+                </ul>
+            </li>
+            <li>
+                a date when you will be there:
+                <ul>
+                    <li><code>2021-03-23</code></li>
+                </ul>
+            </li>
+        </ul>
+    </p>
+    <p>
+        There are also optional data you can add:
+        <ul>
+            <li>
+                a time of day when you plan to arrive to the location
+                (this has to be right after your mandatory date):
+                <ul>
+                    <li><code>11:30</code></li>
+                </ul>
+            </li>
+            <li>
+                a message describing what you plan to do at the location:
+                <ul>
+                    <li><code>"Starting here on my hike to Abisko."</code></li>
+                </ul>
+            </li>
+            <!--<li>
+                a pre-defined action tag:
+                <ul>
+                    <li><code>tent</code></li>
+                    <li><code>Hut</code></li>
+                    <li><code>FOOD</code></li>
+                </ul>
+            </li>-->
+        </ul>
+    </p>
+    <p>
+        An example of what an itinerary might look like follows below.
+    </p>
+    <p><code>
+        edit<br>
+        33 N7532 E669<br>
+        2021-07-10 11:30<br>
+        "Starting here on my hike to Abisko."<br>
+        <br>
+        33 N7533 E652<br>
+        2021-07-10 19:00<br>
+        "Staying at Keb for the night."<br>
+        <!--hut<br>-->
+        <br>
+        33 N7538 E638<br>
+        2021-07-11<br>
+        "Pitching my tent around here."<br>
+        <!--tent<br>-->
+        <br>
+        33 N7540 E637<br>
+        2021-07-12<br>
+        "Planning for a short day to get a good<br>
+        nights sleep in Sälka."<br>
+        <!--hut<br>-->
+        <br>
+        33 N7549 E635<br>
+        2021-07-13 13:00<br>
+        "I hope to get a lunch with a view in Tjäkta."<br>
+        <!--food<br>-->
+        <br>
+        33 N7562 E642<br>
+        2021-07-13 22:00<br>
+        "After a long day I hopefully reach Alesjaure."<br>
+        <!--hut<br>-->
+        <br>
+        33 N7579 E648<br>
+        2021-07-14<br>
+        "When I come to Abiskojaure, it's really not that<br>
+        far to Abisko anymore."<br>
+        <!--hut<br-->
+        <br>
+        33 N7587 E656<br>
+        2021-07-14 15:00<br>
+        "In Abisko I hope to get a really nice fika."<br>
+        <!--food-->
+    </code></p>
+    <p>
+        There are a couple of things to note:
+        <ul>
+            <li>
+                If you want to change anything in your itinerary, you
+                just have to send a new <code>edit</code>. Just make sure you
+                send all the full plan again, not just the part you want to
+                change.
+            </li>
+            <li>
+                The order of the different attributes doesn't matter, but
+                it is a good idea to put the position first in each point.
+                As it is mandatory, there is no risk of attributes getting
+                into the wrong point if you do this.
+            </li>
+            <li>
+                Line breaks doesn't matter either, but it looks really ugly and
+                confusing if you don't use them.
+            </li>
+        </ul>
+    </p>
+    <h2>“Vend i tide – det er ingen skam å snu”</h2>
+    <p>
+        Things doesn't always go as planned. Therefore it is a good idea to be
+        able to check in during the hike, to tell people where you are and that
+        you are alright. To do this, send a <code>checkin</code> message:
+    </p>
+    <p><code>
+        checkin<br>
+        33 N7533 E652<br>
+        "Staying at Keb an extra night due to the ongoing snow storm."<br>
+        <!--hut-->
+    </code></p>
+    <p>
+        Of course you can post messages commenting the view as well
+        <code>:)</code>
+    </p>
+    <p>
+        As you can see, a <code>checkin</code> message looks just like an
+        <code>edit</code> message, but with just one point. And here you don't
+        have to type in the date if you don't want to. You can't edit a checkin.
+    </p>
+    <h2>Coming home</h2>
+    <p>
+        When you are home, sound and safe, you might want to start to plan your
+        next hike. Then it is easy to erase your current map with a
+        <code>complete</code> message:
+    </p>
+    <p><code>
+        complete
+    </code></p>
+    <p>
+        <b>This will delete all of your data from the server.</b> After that
+        you can start a new map using <code>create</code> again.
+    </p>
+    <h2>Disclaimer</h2>
+    <p>
+        <b>This is an experiment, and the site may go down at any time.</b>
+    </p>
+    <a class="github-fork-ribbon" href="https://github.com/widforss/fiordland/" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
+</body>
+</html>
