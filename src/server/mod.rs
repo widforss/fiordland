@@ -42,17 +42,22 @@ pub async fn serve() {
     let ws_db = Arc::clone(&db);
     tokio::spawn( async move {
         while let Some((phone, mut ws)) = ws_rx.recv().await {
-            if let Ok(rows) = ws_db.query("SELECT * FROM public.hike($1)", &[&phone]).await {
-                let json = convert_rows(rows);
-                let _ =ws.send(Message::text(json)).await;
-            };
+            match ws_db.query("SELECT * FROM public.hike($1)", &[&phone]).await {
+                Ok(rows) if rows.len() > 0 => {
+                    let json = convert_rows(rows);
+                    let _ = ws.send(Message::text(json)).await;
 
-            let mut sockets = sockets_in.lock().await;
-            match (*sockets).get_mut(&phone) {
-                Some(wss) => wss.push(ws),
-                None => {
-                    (*sockets).insert(phone, vec![ws]);
-                },
+                    let mut sockets = sockets_in.lock().await;
+                    match (*sockets).get_mut(&phone) {
+                        Some(wss) => wss.push(ws),
+                        None => {
+                            (*sockets).insert(phone, vec![ws]);
+                        },
+                    }
+                }
+                _ => {
+                    let _ = ws.send(Message::text("null".to_string())).await;
+                }
             }
         }
     });
@@ -106,27 +111,31 @@ pub async fn serve() {
             let json = serde_json::to_value(&command).unwrap();
 
             use Command::*;
+            let db = db.clone();
+            let mut db_tx = db_tx.clone();
             let query = match command {
                 Create(_) => "SELECT * FROM public.create_hike($1, $2)",
                 Edit(_) => "SELECT * FROM public.edit_route($1, $2)",
                 Checkin(_) => "SELECT * FROM public.edit_route($1, $2)",
                 Complete => "SELECT * FROM public.complete_hike($1)",
             };
-            let db = db.clone();
-            let mut db_tx = db_tx.clone();
             tokio::spawn(async move {
-                let rows = match command {
-                    Complete => {
-                        db.query(query, &[&from]).await.unwrap();
-                        return;
+                let rows = if let Complete = command {
+                    db.query(query, &[&from]).await.unwrap();
+                    None
+                } else {
+                    match db.query(query, &[&from, &json]).await {
+                        Ok(rows) if rows.len() > 0 => Some(rows),
+                        _ => None,
                     }
-                    _ => db.query(query, &[&from, &json]).await
                 };
-                if let Ok(rows) = rows {
+
+                if let Some(rows) = rows {
                     let json = convert_rows(rows);
                     db_tx.send((from, json)).await.unwrap();
+                } else {
+                    db_tx.send((from, "null".to_string())).await.unwrap();
                 }
-
             });
             "".to_string()
         });
