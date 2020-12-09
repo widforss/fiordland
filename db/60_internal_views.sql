@@ -20,8 +20,8 @@ SELECT route._hike_id,
 FROM hike.route
          JOIN (SELECT *
                FROM hike.route_point
-               ORDER BY COALESCE(date, log_date::DATE), time,
-                        log_date) route_point
+               ORDER BY COALESCE(date, log_date::DATE) DESC, time DESC,
+                        log_date DESC) route_point
               ON route_point._route_id = hike.route._id
          LEFT JOIN hike.action ON route_point._action_id = hike.action._id
 GROUP BY route._id;
@@ -48,8 +48,8 @@ SELECT trace._hike_id,
 FROM hike.trace
          JOIN (SELECT *
                FROM hike.trace_point
-               ORDER BY COALESCE(date, log_date::DATE), time,
-                        log_date) trace_point
+               ORDER BY COALESCE(date, log_date::DATE) DESC, time DESC,
+                        log_date DESC) trace_point
               ON trace_point._trace_id = hike.trace._id
          LEFT JOIN hike.action ON trace_point._action_id = hike.action._id
 GROUP BY trace._id;
@@ -67,13 +67,11 @@ FROM hike.hike
          JOIN phone.phone ON hike.hike._phone_id = phone.phone._id
          LEFT JOIN (SELECT *
                     FROM interface.route
-                    ORDER BY route.log_date DESC) route
+                    ORDER BY route.log_date) route
                    ON route._hike_id = hike._id
          LEFT JOIN (SELECT *
                     FROM interface.trace
-                    ORDER BY trace.log_date DESC) trace
+                    ORDER BY trace.log_date) trace
                    ON trace._hike_id = hike._id
 GROUP BY hike._id,
-         phone.phone
-ORDER BY hike._id,
          phone.phone;
