@@ -1,13 +1,11 @@
-use super::super::error::Error;
-use super::Span;
+use crate::error::Error;
 use nom::Err;
 
-pub type ParseResult<'a, O, E = ParseError<'a>> = Result<(Span<'a>, O), Err<E>>;
+pub type ParseResult<'a, O, E = ParseError<'a>> = Result<(&'a str, O), Err<E>>;
 
 #[derive(Debug)]
 pub struct ParseError<'a> {
-    pub input: Span<'a>,
-    pub span: Option<Span<'a>>,
+    pub input: &'a str,
     pub error: ErrorKind,
 }
 
@@ -24,16 +22,12 @@ pub enum ErrorKind {
 }
 
 impl<'a> ParseError<'a> {
-    pub fn new(input: Span<'a>, span: Option<Span<'a>>, error: ErrorKind) -> Self {
-        ParseError { input, span, error }
+    pub fn new(input: &'a str, error: ErrorKind) -> Self {
+        ParseError { input, error }
     }
 }
 
 impl<'a> Error for ParseError<'a> {
-    fn span(&self) -> Option<Span> {
-        self.span
-    }
-
     fn description(&self) -> String {
         use ErrorKind::*;
 
@@ -51,25 +45,10 @@ impl<'a> Error for ParseError<'a> {
     }
 }
 
-impl<'a> nom::error::ParseError<Span<'a>> for ParseError<'a> {
-    fn from_error_kind(input: Span<'a>, kind: nom::error::ErrorKind) -> Self {
-        ParseError {
-            input,
-            span: None,
-            error: ErrorKind::Nom(kind),
-        }
-    }
-
-    fn append(_: Span<'a>, _: nom::error::ErrorKind, other: Self) -> Self {
-        other
-    }
-}
-
 impl<'a> nom::error::ParseError<&'a str> for ParseError<'a> {
     fn from_error_kind(input: &'a str, kind: nom::error::ErrorKind) -> Self {
         ParseError {
-            input: Span::new(input),
-            span: None,
+            input,
             error: ErrorKind::Nom(kind),
         }
     }

@@ -1,15 +1,11 @@
+mod command;
 mod error;
-mod parser;
+mod server;
 
-use nom_locate::LocatedSpan;
-use parser::Command;
+const DEFAULT_SECRET: &'static str = "secret";
+const DEFAULT_CONN: &'static str = "host=localhost";
 
-pub type Span<'a> = LocatedSpan<&'a str>;
-
-const TEST: &'static str = "create
-33 E618 7428602.235 2020-11-10 07:12:36 tent
-\"Start of hike! Getting of the bus here.\"";
-
-fn main() {
-    println!("{:#?}", Command::parse(TEST));
+#[tokio::main]
+async fn main() {
+    server::serve().await;
 }
