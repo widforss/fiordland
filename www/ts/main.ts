@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function wsHandler(ol: Ol.OlObjects) {
-    ws = new WebSocket("ws://localhost:3030/listen");
+    ws = new WebSocket("wss://fiordland.antarkt.is/listen");
 
     ws.onopen = (event) => {
         ws.send("+" + phone);
