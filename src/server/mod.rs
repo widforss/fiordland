@@ -154,6 +154,7 @@ pub async fn serve() {
 
     let map = warp::get()
         .and(warp::path("map"))
+        .and(warp::path::end())
         .and(warp::fs::file("www/static/html/map.html"));
 
     let routes = root.or(static_content).or(sms).or(ws).or(map);
