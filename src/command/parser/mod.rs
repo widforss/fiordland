@@ -42,7 +42,7 @@ fn parse_create(input: &str) -> ParseResult<Command> {
 
 fn parse_edit(input: &str) -> ParseResult<Command> {
     let tag = "edit";
-    let parser = sequence::tuple((bytes::tag_no_case(tag), multi::many1(parse_point)));
+    let parser = sequence::tuple((bytes::tag_no_case(tag), multi::many0(parse_point)));
     let (input, (_, points)) = parser(input)?;
 
     Ok((input, Command::Edit(points)))

@@ -114,6 +114,7 @@ pub async fn serve() {
                 Err(_) => return "".to_string(),
             };
             let json = serde_json::to_value(&command).unwrap();
+            println!("{}", json);
 
             use Command::*;
             let db = db.clone();
@@ -121,7 +122,7 @@ pub async fn serve() {
             let query = match command {
                 Create(_) => "SELECT * FROM public.create_hike($1, $2)",
                 Edit(_) => "SELECT * FROM public.edit_route($1, $2)",
-                Checkin(_) => "SELECT * FROM public.edit_route($1, $2)",
+                Checkin(_) => "SELECT * FROM public.checkin_trace($1, $2)",
                 Complete => "SELECT * FROM public.complete_hike($1)",
             };
             tokio::spawn(async move {
@@ -181,8 +182,8 @@ fn convert_rows(rows: Vec<Row>) -> String {
     let traces: Option<Value> = rows[0].get(3);
     json!({
         "_id": _id,
-        "routes": routes,
-        "traces": traces,
+        "route": routes,
+        "trace": traces,
     })
     .to_string()
 }
