@@ -9,7 +9,7 @@
   bottom: 12px;
   left: -50px;
   font-size: 14px;
-  white-space: nowrap;
+  width: 200px;
 }
 .ol-popup:after, .ol-popup:before {
   top: 100%;

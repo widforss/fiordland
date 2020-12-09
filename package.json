@@ -1,0 +1,31 @@
+{
+  "name": "fiordland",
+  "version": "0.1.0",
+  "description": "Hike tracker with SMS interface.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "webpack --config webpack.config.js --mode development",
+    "build": "webpack --config webpack.config.js --mode production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/widforss/fiordland.git"
+  },
+  "author": "Aron Widforss (aron@antarkt.is)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/widforss/fiordland/issues"
+  },
+  "homepage": "https://github.com/widforss/fiordland",
+  "dependencies": {
+    "@turf/turf": "^5.1.6",
+    "@types/ol": "^6.4.2",
+    "@types/proj4": "^2.5.0",
+    "ol": "^6.4.3",
+    "proj4": "^2.6.2",
+    "ts-loader": "^7.0.5",
+    "typescript": "^3.9.7",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.12"
+  }
+}

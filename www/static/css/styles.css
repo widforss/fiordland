@@ -18,6 +18,11 @@ h2 {
     margin-top: 40px;
 }
 
+h3 {
+    margin-top: 10px;
+    margin-bottom: 2px;
+}
+
 a {
     color: black;
 }
@@ -44,4 +49,8 @@ input, select {
 
 .ol-control button:hover {
     background-color: #6996A3;
+}
+
+.bold, td:first-child {
+    font-weight: 700;
 }
