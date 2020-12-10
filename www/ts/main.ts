@@ -4,7 +4,7 @@ import * as Popup from "./ol/popup";
 let phone = new URL(window.location.href).searchParams.get("map");
 let ws: WebSocket;
 if (!/^\d{5,30}$/.test(phone)) {
-    window.location.replace("/");
+    window.location.href = "/";
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -38,14 +38,14 @@ function wsHandler(ol: Ol.OlObjects) {
         ws.send("+" + phone);
     }
     ws.onerror = () => {
-        window.location.replace("/");
+        window.location.href = "/";
     }
     ws.onclose = ws.onerror
 
     ws.onmessage = (event) => {
         let json = JSON.parse(event.data);
         if (!json) {
-            window.location.replace("/");
+            window.location.href = "/";
             return
         }
         Ol.loadGeoJson(json["route"], ol.routeLayer);
